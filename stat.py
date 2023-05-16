@@ -1,8 +1,10 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import argparse
 
-if __name__ == '__main__':
-    result_file = '../y10ab1_data/results_2023-05-10_12-12-29/inference_log.csv'
+
+def main(args):
+    result_file = args.result_file
     
     # Read the result file
     df = pd.read_csv(result_file)
@@ -34,11 +36,28 @@ if __name__ == '__main__':
     # Save the plot
     fig.tight_layout()
 
-    plt.savefig(f'stat_{result_file.split("/")[-2]}.png')
+    plt.savefig(f'{args.save_dir}/statistics_{result_file.split("/")[-2]}.png')
     
     # Create chart for top10 frequent (subject, relation, object) tuples
     df['tuple'] = df['subject'] + ' ' + df['relation'] + ' ' + df['object']
     df['tuple'].value_counts()[:10].plot(kind='bar', color='red', title='Top 10 frequent tuples')
     plt.xticks(rotation=45)
     plt.tight_layout()
-    plt.savefig(f'top10_{result_file.split("/")[-2]}.png')
+    plt.savefig(f'{args.save_dir}/top10_{result_file.split("/")[-2]}.png')
+    
+
+def get_parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-r', '--result_file', type=str, 
+                        default='../y10ab1_data/results_2023-05-10_12-12-29/inference_log.csv', 
+                        help='Path to the result file')
+    
+    parser.add_argument('-s', '--save_dir', type=str, default='../y10ab1_data/reltr/statistics',
+                        help='Path to the directory to save the statistics')
+    args = parser.parse_args()
+    return args
+
+
+if __name__ == '__main__':
+    args = get_parse_args()
+    main(args)

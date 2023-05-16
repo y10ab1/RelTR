@@ -33,7 +33,7 @@ def get_args_parser():
                         help="Path of the log file")
                         
     # results dir
-    parser.add_argument('--results_dir', type=str, default='results',
+    parser.add_argument('--results_dir', type=str, default=f'results/results_{time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())}',
                         help="Path of the results dir")
     
     # confidence threshold
@@ -50,7 +50,7 @@ def get_args_parser():
     
     # filter class list
     parser.add_argument('--filter_class_list', type=list, default=['leg', 'tail', 'eye', 'ear', 'mouth', 'nose', 'paw',
-                                                                    'beak', 'wing', 'hair', 'face', 'head', 'neck', 'trunk',
+                                                                    'beak', 'wing', 'hair', 'face', 'head', 'neck',
                                                                     'hand', 'arm', 'finger', 'foot', 'toe', 'branch','pant','room',
                                                                     'shoe', 'jean', 'short', 'shirt', 'coat', 'jacket', 'glove', 'hat',],
                         help="Classes that we want to filter out")
@@ -383,7 +383,7 @@ def main(args):
                         )
         table.scale(2, 4)  # Increased the row value
         table.auto_set_font_size(False)
-        table.set_fontsize(15)
+        table.set_fontsize(25)
         table.auto_set_column_width(col=list(range(len(headers))))
         fig.tight_layout()
         plt.show()
@@ -464,7 +464,7 @@ if __name__ == '__main__':
     
     
     IMAGE_DIR = args.img_dir
-    IMAGE_DIR = 'summary_dataset/video/2023-03-26/002DB303B2DA_video/'
+    # IMAGE_DIR = 'summary_dataset/video/2023-03-26/002DB303B2DA_video/'
     
     
     
