@@ -36,7 +36,7 @@ def main(args):
     # Save the plot
     fig.tight_layout()
 
-    plt.savefig(f'{args.save_dir}/statistics_{result_file.split("/")[-2]}.png')
+    plt.savefig(f'{args.save_dir}/stat_{result_file.split("/")[-2]}.png')
     
     # Create chart for top10 frequent (subject, relation, object) tuples
     df['tuple'] = df['subject'] + ' ' + df['relation'] + ' ' + df['object']

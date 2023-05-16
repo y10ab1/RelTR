@@ -22,7 +22,7 @@ from torchvision.ops import nms
 def get_args_parser():
     parser = argparse.ArgumentParser('Set transformer detector', add_help=False)
     parser.add_argument('--lr_backbone', default=1e-5, type=float)
-    parser.add_argument('--dataset', default='vg')
+    parser.add_argument('--dataset', default='oi')
 
     # image path
     parser.add_argument('--img_path', type=str, default='demo/vg1.jpg',
@@ -34,7 +34,7 @@ def get_args_parser():
                         
     # results dir
     current_time = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
-    parser.add_argument('--results_dir', type=str, default=f'results/results_{current_time}',
+    parser.add_argument('--results_dir', type=str, default=f'results/results_oi_{current_time}',
                         help="Path of the results dir")
     
     # log path
@@ -95,7 +95,7 @@ def get_args_parser():
 
     parser.add_argument('--device', default='cuda' if torch.cuda.is_available() else 'cpu',
                         help='device to use for training / testing')
-    parser.add_argument('--resume', default='ckpt/checkpoint0149.pth', help='resume from checkpoint')
+    parser.add_argument('--resume', default='ckpt/checkpoint0149_oi.pth', help='resume from checkpoint')
     parser.add_argument('--set_cost_class', default=1, type=float,
                         help="Class coefficient in the matching cost")
     parser.add_argument('--set_cost_bbox', default=5, type=float,
@@ -138,28 +138,42 @@ def main(args):
         b = b * torch.tensor([img_w, img_h, img_w, img_h], dtype=torch.float32)
         return b
 
-    # VG classes
-    CLASSES = [ 'N/A', 'airplane', 'animal', 'arm', 'bag', 'banana', 'basket', 'beach', 'bear', 'bed', 'bench', 'bike',
-                'bird', 'board', 'boat', 'book', 'boot', 'bottle', 'bowl', 'box', 'boy', 'branch', 'building',
-                'bus', 'cabinet', 'cap', 'car', 'cat', 'chair', 'child', 'clock', 'coat', 'counter', 'cow', 'cup',
-                'curtain', 'desk', 'dog', 'door', 'drawer', 'ear', 'elephant', 'engine', 'eye', 'face', 'fence',
-                'finger', 'flag', 'flower', 'food', 'fork', 'fruit', 'giraffe', 'girl', 'glass', 'glove', 'guy',
-                'hair', 'hand', 'handle', 'hat', 'head', 'helmet', 'hill', 'horse', 'house', 'jacket', 'jean',
-                'kid', 'kite', 'lady', 'lamp', 'laptop', 'leaf', 'leg', 'letter', 'light', 'logo', 'man', 'men',
-                'motorcycle', 'mountain', 'mouth', 'neck', 'nose', 'number', 'orange', 'pant', 'paper', 'paw',
-                'people', 'person', 'phone', 'pillow', 'pizza', 'plane', 'plant', 'plate', 'player', 'pole', 'post',
-                'pot', 'racket', 'railing', 'rock', 'roof', 'room', 'screen', 'seat', 'sheep', 'shelf', 'shirt',
-                'shoe', 'short', 'sidewalk', 'sign', 'sink', 'skateboard', 'ski', 'skier', 'sneaker', 'snow',
-                'sock', 'stand', 'street', 'surfboard', 'table', 'tail', 'tie', 'tile', 'tire', 'toilet', 'towel',
-                'tower', 'track', 'train', 'tree', 'truck', 'trunk', 'umbrella', 'vase', 'vegetable', 'vehicle',
-                'wave', 'wheel', 'window', 'windshield', 'wing', 'wire', 'woman', 'zebra']
+    # OI classes
+    CLASSES = ['Tennis ball', 'Shotgun', 'Bicycle', 'Potato', 'Table', 'Cantaloupe', 'Crab', 'Drawer', 'Beer', 
+               'Dinosaur', 'Popcorn', 'Adhesive tape', 'Parachute', 'Seahorse', 'Pen', 'Bowling equipment', 'Camera', 
+               'Saxophone', 'Train', 'Canoe', 'Trumpet', 'Pear', 'Unicycle', 'Flowerpot', 'Serving tray', 'Axe', 'Billiard table', 
+               'Burrito', 'Guitar', '__background__', 'Candy', 'Hammer', 'Punching bag', 'Ski', 'Skateboard', 'Croissant', 
+               'Box', 'Kite', 'Snowmobile', 'Mixing bowl', 'Pitcher (Container)', 'Spoon', 'Torch', 'Binoculars', 'Belt', 
+               'Lobster', 'Cowboy hat', 'Mug', 'Mango', 'Grapefruit', 'Candle', 'Alpaca', 'Dog', 'Grape', 'Frying pan', 
+               'Sewing machine', 'Sword', 'Football helmet', 'Broccoli', 'Egg (Food)', 'Handbag', 'Common fig', 'Microphone', 
+               'Snowplow', 'Truck', 'Bottle', 'Indoor rower', 'Musical keyboard', 'Strawberry', 'Bow and arrow', 'Pasta', 
+               'Pancake', 'Cat', 'Scissors', 'Tablet computer', 'Chair', 'Cart', 'Boat', 'Boy', 'Fedora', 'Oyster', 'Pizza', 
+               'Man', 'Sombrero', 'Wine glass', 'Golf ball', 'Cannon', 'Corded phone', 'High heels', 'Watch', 'Balance beam', 
+               'Tea', 'Lantern', 'Desk', 'Rifle', 'Salad', 'Crocodile', 'Coconut', 'Scarf', 'Boot', 'Limousine', 'Microwave oven', 
+               'Lemon', 'Necklace', 'Pineapple', 'Football', 'Tree', 'Jaguar (Animal)', 'Bench', 'Wok', 'Tank', 'Doll', 'Bread', 'Glasses', 
+               'Toilet paper', 'Sunglasses', 'Backpack', 'Teddy bear', 'Hamster', 'Tin can', 'Dumbbell', 'Gondola', 'Baseball glove', 
+               'Shrimp', 'Balloon', 'Book', 'Accordion', 'Flute', 'Ice cream', 'Tomato', 'Closet', 'Waste container', 'Wheelchair', 
+               'Bicycle helmet', 'Peach', 'Harbor seal', 'Sofa bed', 'Girl', 'Cupboard', 'Horizontal bar', 'Chopsticks', 'Harp', 
+               'Studio couch', 'Houseplant', 'Trombone', 'Bagel', 'Radish', 'Cucumber', 'Crown', 'Cocktail', 'Cutting board', 
+               'Drum', 'Stretcher', 'Watermelon', 'Common sunflower', 'Personal flotation device', 'Stool', 'Cheese', 'Coffee cup', 
+               'Cricket ball', 'Elephant', 'Harpsichord', 'Lavender (Plant)', 'Infant bed', 'Pretzel', 'Suitcase', 'Sun hat', 'Violin', 'Whale', 
+               'Ladder', 'Zucchini', 'Cake stand', 'Countertop', 'Hamburger', 'Briefcase', 'Wine', 'Snowboard', 'Plastic bag', 'Baseball bat', 
+               'Flying disc', 'Juice', 'Lily', 'Earrings', 'Panda', 'Monkey', 'Orange', 'Snake', 'Cabbage', 'French fries', 'Coffee table', 
+               'Muffin', 'Cello', 'Piano', 'Swim cap', 'Fox', 'Plate', 'Tart', 'Kitchen knife', 'Stethoscope', 'Submarine sandwich', 'Banana', 
+               'Banjo', 'Sushi', 'Motorcycle', 'Horse', 'Rugby ball', 'French horn', 'Picnic basket', 'Segway', 'Shark', 'Skunk', 'Palm tree', 
+               'Whiteboard', 'Treadmill', 'Brown bear', 'Teapot', 'Apple', 'Pomegranate', 'Lynx', 'Van', 'Handgun', 'Dolphin', 'Paddle', 
+               'Volleyball (Ball)', 'Hiking equipment', 'Tent', 'Tripod', 'Bed', 'Washing machine', 'Ambulance', 'Tortoise', 'Saucer', 
+               'Rays and skates', 'Lizard', 'Roller skates', 'Stationary bicycle', 'Oboe', 'Artichoke', 'Barrel', 'Loveseat', 'Honeycomb', 
+               'Doughnut', 'Jug', 'Maple', 'Sea lion', 'Knife', 'Goggles', 'Surfboard', 'Kitchen & dining room table', 'Carrot', 'Dog bed', 
+               'Golf cart', 'Bicycle wheel', 'Airplane', 'Cookie', 'Drinking straw', 'Garden Asparagus', 'Mushroom', 'Oven', 'Sandal', 
+               'Sea turtle', 'Bell pepper', 'Bus', 'Rose', 'Whisk', 'Platter', 'Tennis racket', 'Fork', 'Pumpkin', 'Taxi', 'Tiara', 
+               'Woman', 'Christmas tree', 'Coffee', 'Organ (Musical Instrument)', 'Tree house', 'Jet ski', 'Milk', 'Racket', 
+               'Helicopter', 'Bowl', 'Mobile phone', 'Table tennis racket', 'Cat furniture', 'Polar bear', 'Car', 'Waffle', 'Taco', 'Cake']
 
-    REL_CLASSES = ['__background__', 'above', 'across', 'against', 'along', 'and', 'at', 'attached to', 'behind',
-                'belonging to', 'between', 'carrying', 'covered in', 'covering', 'eating', 'flying in', 'for',
-                'from', 'growing on', 'hanging from', 'has', 'holding', 'in', 'in front of', 'laying on',
-                'looking at', 'lying on', 'made of', 'mounted on', 'near', 'of', 'on', 'on back of', 'over',
-                'painted on', 'parked on', 'part of', 'playing', 'riding', 'says', 'sitting on', 'standing on',
-                'to', 'under', 'using', 'walking in', 'walking on', 'watching', 'wearing', 'wears', 'with']
+    REL_CLASSES = ["at", "catch", "contain", "cut", "dance", "drink", "eat", "handshake", 
+                   "hang", "highfive", "hits", "holding_hands", "holds", "hug", "inside_of", 
+                   "interacts_with", "is", "kick", "kiss", "on", "plays", "read", "ride", 
+                   "skateboard", "ski", "snowboard", "surf", "talk_on_phone", "throw", "under", "wears"]
 
 
 
