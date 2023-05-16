@@ -34,7 +34,7 @@ def get_args_parser():
                         
     # results dir
     current_time = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
-    parser.add_argument('--results_dir', type=str, default=f'results/results_oi_{current_time}',
+    parser.add_argument('--results_dir', type=str, default=f'results/results_{current_time}',
                         help="Path of the results dir")
     
     # log path
@@ -50,7 +50,7 @@ def get_args_parser():
                         help="Top k predictions to show")
     
     # target class list
-    parser.add_argument('--target_class_list', type=list, default=['person', 'dog', 'cat'],
+    parser.add_argument('--target_class_list', type=list, default=['Woman', 'Dog', 'Cat', 'Man'],
                         help="Classes that we want to detect")
     
     # filter class list
@@ -242,7 +242,7 @@ def main(args):
     
     # alert if no triplets are found
     if keep.sum() == 0:
-        print('No relation with confidence > 0.3 found')
+        print(f'No relation with confidence > {confidence_threshold} found')
         df = update_dataframe(df,
                             subject='N/A',
                             relation='N/A',
@@ -504,4 +504,9 @@ if __name__ == '__main__':
         tqdm_logger.set_description(f'Processing {img_path}')
         args.img_path = os.path.join(IMAGE_DIR, img_path)
         main(args)
+        
+    # output config to results dir
+    with open(f'{args.results_dir}/config.txt', 'w') as f:
+        f.write(str(args))
+        
     print('Done.\n')
