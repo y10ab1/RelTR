@@ -6,7 +6,7 @@ import json
 import os
 
 root_path = 'your_path/open-imagev6/' # Download images from Rongjie's repo and unzip it.
-
+root_path = 'oi'
 
 with open(root_path +'annotations/'+ 'categories_dict.json') as f:
     categories = json.load(f)
