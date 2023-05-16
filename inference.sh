@@ -14,7 +14,7 @@ touch $INFERENVE_LOG_PATH
 
 
 
-CUDA_VISIBLE_DEVICES=7 python inference_custom.py --resume $MODEL_PATH\
+CUDA_VISIBLE_DEVICES=4 python inference_custom.py --resume $MODEL_PATH\
                                                   --log_path $INFERENVE_LOG_PATH\
                                                     --results_dir $RESULTS_PATH
 

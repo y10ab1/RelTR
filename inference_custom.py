@@ -24,6 +24,10 @@ def get_args_parser():
     parser.add_argument('--img_path', type=str, default='demo/vg1.jpg',
                         help="Path of the test image")
     
+    # image dir
+    parser.add_argument('--img_dir', type=str, default='images',
+                        help="Path of the images dir")
+    
     # log path
     parser.add_argument('--log_path', type=str, default='inference_log.csv',
                         help="Path of the log file")
@@ -31,7 +35,26 @@ def get_args_parser():
     # results dir
     parser.add_argument('--results_dir', type=str, default='results',
                         help="Path of the results dir")
+    
+    # confidence threshold
+    parser.add_argument('--confidence_threshold', type=float, default=0.3,
+                        help="Confidence threshold for filtering predictions")
+    
+    # topk
+    parser.add_argument('--topk', type=int, default=10,
+                        help="Top k predictions to show")
+    
+    # target class list
+    parser.add_argument('--target_class_list', type=list, default=['person', 'dog', 'cat'],
+                        help="Classes that we want to detect")
+    
+    # filter class list
+    parser.add_argument('--filter_class_list', type=list, default=['leg', 'tail', 'eye', 'ear', 'mouth', 'nose', 'paw',
+                                                                    'beak', 'wing', 'hair', 'face', 'head', 'neck', 'trunk',
+                                                                    'hand', 'arm', 'finger', 'foot', 'leg', 'toe', 'branch',],
+                        help="Classes that we want to filter out")
                         
+    
 
     # * Backbone
     parser.add_argument('--backbone', default='resnet50', type=str,
@@ -166,11 +189,44 @@ def main(args):
     
 
     # keep only predictions with 0.+ confidence
+    confidence_threshold = args.confidence_threshold
     probas = outputs['rel_logits'].softmax(-1)[0, :, :-1]
     probas_sub = outputs['sub_logits'].softmax(-1)[0, :, :-1]
     probas_obj = outputs['obj_logits'].softmax(-1)[0, :, :-1]
-    keep = torch.logical_and(probas.max(-1).values > 0.3, torch.logical_and(probas_sub.max(-1).values > 0.3,
-                                                                            probas_obj.max(-1).values > 0.3))
+    keep = torch.logical_and(probas.max(-1).values > confidence_threshold, 
+                             torch.logical_and(probas_sub.max(-1).values > confidence_threshold,
+                             probas_obj.max(-1).values > confidence_threshold))
+    
+    #print('Shape of keep', keep.shape)
+    
+    # # keep only relationship triplets with subject or object containing 'person', 'dog' or 'cat'
+    # # i.e. only keep triplets with subject or object containing 'person', 'dog' or 'cat'
+    # keep_class_idx = [idx for idx, class_name in enumerate(CLASSES) if class_name in args.target_class_list]
+    # keep_class_idx_tensor = torch.tensor(keep_class_idx)
+    
+    # # Get predicted classes
+    # pred_sub = probas_sub.argmax(dim=-1)
+    # pred_obj = probas_obj.argmax(dim=-1)
+
+    # # Expand dimensions to match for broadcasting
+    # pred_sub = pred_sub.unsqueeze(1)
+    # pred_obj = pred_obj.unsqueeze(1)
+
+    # # Check if these classes are in your target classes
+    # mask_sub = torch.any(pred_sub == keep_class_idx_tensor, dim=1)
+    # mask_obj = torch.any(pred_obj == keep_class_idx_tensor, dim=1)
+
+    # # Apply this mask to your `keep` tensor
+    # keep = torch.logical_and(keep, torch.logical_or(mask_sub, mask_obj))
+    
+    keep = retain_target_classes(probas_sub, probas_obj, keep, args.target_class_list, CLASSES)
+    
+    keep = filter_out_classes(probas_sub, probas_obj, keep, args.filter_class_list, CLASSES)
+
+
+
+    
+    
     # load csv from log path, it may be an empty file or already contains a dataframe
     if os.path.exists(args.log_path) and os.path.getsize(args.log_path) > 0:
         df = pd.read_csv(args.log_path)
@@ -206,10 +262,9 @@ def main(args):
     sub_bboxes_scaled = rescale_bboxes(outputs['sub_boxes'][0, keep], im.size)
     obj_bboxes_scaled = rescale_bboxes(outputs['obj_boxes'][0, keep], im.size)
 
-    topk = 10
+    topk = args.topk
     keep_queries = torch.nonzero(keep, as_tuple=True)[0]
     indices = torch.argsort(-probas[keep_queries].max(-1)[0] * probas_sub[keep_queries].max(-1)[0] * probas_obj[keep_queries].max(-1)[0])[:topk]
-    #print("Length of indices:", len(indices))
     keep_queries = keep_queries[indices] # descending order by probas * probas_sub * probas_obj value
 
     # use lists to store the outputs via up-values
@@ -243,8 +298,6 @@ def main(args):
         im_w, im_h = im.size
         
         
-            
-            
         
         
 
@@ -293,6 +346,51 @@ def main(args):
         plt.show()
         plt.savefig(f'{args.results_dir}/result_{os.path.basename(img_path)}')
         
+        ### Create a merged figure with the list of top k predictions and original image
+        
+        df['total_confidence'] = df['subject_confidence'] * df['relation_confidence'] * df['object_confidence']
+        df_to_show = df.tail(len(keep_queries)).sort_values(by='total_confidence', ascending=False)
+
+        
+        # Round the confidence values
+        df_to_show[['subject_confidence', 'relation_confidence', 'object_confidence', 'total_confidence']] = \
+            df_to_show[['subject_confidence', 'relation_confidence', 'object_confidence', 'total_confidence']].round(4)
+
+        fig, axs = plt.subplots(ncols=2, nrows=1, figsize=(30, 10))
+        ax = axs[0]
+        ax.imshow(im)
+        for idx, (sxmin, symin, sxmax, symax), (oxmin, oymin, oxmax, oymax) in \
+                zip(keep_queries, sub_bboxes_scaled[indices], obj_bboxes_scaled[indices]):
+            ax.add_patch(plt.Rectangle((sxmin, symin), sxmax - sxmin, symax - symin,
+                                    fill=False, color='blue', linewidth=2.5))
+            ax.add_patch(plt.Rectangle((oxmin, oymin), oxmax - oxmin, oymax - oymin,
+                                    fill=False, color='orange', linewidth=2.5))
+            ax.text(sxmin, symin, CLASSES[probas_sub[idx].argmax()], color='white', fontsize=20, bbox=dict(facecolor='blue', alpha=0.5))
+            ax.text(oxmin, oymin, CLASSES[probas_obj[idx].argmax()], color='white', fontsize=20, bbox=dict(facecolor='orange', alpha=0.5))
+        ax.axis('off')
+        ax.set_title('Original image with bounding boxes', fontsize=30, pad=30)  # Added padding here
+
+        ax = axs[1]
+        ax.axis('off')
+        ax.set_title('Predicted relationship triplets', fontsize=30)
+        headers = ['subject', 'relation', 'object', 'sub. conf.', 'rel. conf.', 'obj. conf.', 'total conf.']
+
+        table = ax.table(cellText=df_to_show[['subject', 'relation', 'object', 'subject_confidence', 'relation_confidence', 'object_confidence', 'total_confidence']].values,
+                        colLabels=headers,
+                        loc='upper center',
+                        #colWidths=[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1], # Set the column widths
+                        )
+        table.scale(2, 4)  # Increased the row value
+        table.auto_set_font_size(False)
+        table.set_fontsize(15)
+        table.auto_set_column_width(col=list(range(len(headers))))
+        fig.tight_layout()
+        plt.show()
+        plt.savefig(f'{args.results_dir}/result_merge_{os.path.basename(img_path)}')
+
+
+
+        
         # save the dataframe to a csv file
         df.to_csv(args.log_path, index=False)
 
@@ -306,9 +404,54 @@ def update_dataframe(df:pd.DataFrame, **kwargs):
     return df
     
     
+def retain_target_classes(probas_sub, probas_obj, keep, target_class_list, CLASSES):
+    # keep only relationship triplets with subject or object containing 'person', 'dog' or 'cat'
+    # i.e. only keep triplets with subject or object containing 'person', 'dog' or 'cat'
+    keep_class_idx = [idx for idx, class_name in enumerate(CLASSES) if class_name in target_class_list]
+    keep_class_idx_tensor = torch.tensor(keep_class_idx)
     
+    # Get predicted classes
+    pred_sub = probas_sub.argmax(dim=-1)
+    pred_obj = probas_obj.argmax(dim=-1)
+
+    # Expand dimensions to match for broadcasting
+    pred_sub = pred_sub.unsqueeze(1)
+    pred_obj = pred_obj.unsqueeze(1)
+
+    # Check if these classes are in your target classes
+    mask_sub = torch.any(pred_sub == keep_class_idx_tensor, dim=1)
+    mask_obj = torch.any(pred_obj == keep_class_idx_tensor, dim=1)
+
+    # Apply this mask to your `keep` tensor
+    keep = torch.logical_and(keep, torch.logical_or(mask_sub, mask_obj))
+
+    return keep
+
+
+def filter_out_classes(probas_sub, probas_obj, keep, filter_class_list, CLASSES):
+    # Get the indices of the classes to be filtered out
+    filter_class_idx = [idx for idx, class_name in enumerate(CLASSES) if class_name in filter_class_list]
+    filter_class_idx_tensor = torch.tensor(filter_class_idx)
     
+    # Get predicted classes
+    pred_sub = probas_sub.argmax(dim=-1)
+    pred_obj = probas_obj.argmax(dim=-1)
+
+    # Expand dimensions to match for broadcasting
+    pred_sub = pred_sub.unsqueeze(1)
+    pred_obj = pred_obj.unsqueeze(1)
+
+    # Check if these classes are in your filter classes
+    mask_sub = torch.any(pred_sub == filter_class_idx_tensor, dim=1)
+    mask_obj = torch.any(pred_obj == filter_class_idx_tensor, dim=1)
+
+    # Apply this mask to your `keep` tensor, but use logical_and and logical_not 
+    # because we want to remove the filter classes, not keep them
+    keep = torch.logical_and(keep, torch.logical_not(torch.logical_or(mask_sub, mask_obj)))
     
+    return keep
+
+
     
 
 if __name__ == '__main__':
@@ -317,6 +460,8 @@ if __name__ == '__main__':
     
     ckpt = torch.load(args.resume) # time consuming!!!
     
+    
+    IMAGE_DIR = args.img_dir
     IMAGE_DIR = 'summary_dataset/video/2023-03-26/002DB303B2DA_video/'
     
     
