@@ -51,7 +51,8 @@ def get_args_parser():
     # filter class list
     parser.add_argument('--filter_class_list', type=list, default=['leg', 'tail', 'eye', 'ear', 'mouth', 'nose', 'paw',
                                                                     'beak', 'wing', 'hair', 'face', 'head', 'neck', 'trunk',
-                                                                    'hand', 'arm', 'finger', 'foot', 'leg', 'toe', 'branch',],
+                                                                    'hand', 'arm', 'finger', 'foot', 'toe', 'branch','pant','room',
+                                                                    'shoe', 'jean', 'short', 'shirt', 'coat', 'jacket', 'glove', 'hat',],
                         help="Classes that we want to filter out")
                         
     
@@ -387,6 +388,7 @@ def main(args):
         fig.tight_layout()
         plt.show()
         plt.savefig(f'{args.results_dir}/result_merge_{os.path.basename(img_path)}')
+        #plt.close(fig)
 
 
 
