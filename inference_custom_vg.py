@@ -42,7 +42,7 @@ def get_args_parser():
                         help="Path of the log file")
     
     # confidence threshold
-    parser.add_argument('--confidence_threshold', type=float, default=0.3,
+    parser.add_argument('-t', '--confidence_threshold', type=float, default=0.3,
                         help="Confidence threshold for filtering predictions")
     
     # topk
@@ -228,7 +228,7 @@ def main(args):
     
     # alert if no triplets are found
     if keep.sum() == 0:
-        print('No relation with confidence > 0.3 found')
+        print(f'No relation with confidence > {args.confidence_threshold} is found.')
         df = update_dataframe(df,
                             subject='N/A',
                             relation='N/A',
@@ -490,4 +490,11 @@ if __name__ == '__main__':
         tqdm_logger.set_description(f'Processing {img_path}')
         args.img_path = os.path.join(IMAGE_DIR, img_path)
         main(args)
+    
+    # transfer args to json file and save it for reference
+    import json
+    with open(f'{args.results_dir}/config.json', 'w') as f:
+        json.dump(args.__dict__, f, indent=2)
+    
+    
     print('Done.\n')
